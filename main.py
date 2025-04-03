@@ -2,7 +2,7 @@
 import sys
 import os
 				# pip install requests
-import datetime
+from datetime import datetime, timedelta
 import time
 import threading
 import ftd2xx as d2xx			# pip install ftd2xx
@@ -159,7 +159,7 @@ class Bwim_flag:
     event_backup = 0
 
 class Currently_bwim_process_status:
-    expacted_buffering_data_time = datetime.timedelta(seconds= int(EVENT_BLOCK_BUFFER_MAX * EVENT_BLOCK_TIME * 1.2) )
+    expacted_buffering_data_time = timedelta(seconds= int(EVENT_BLOCK_BUFFER_MAX * EVENT_BLOCK_TIME * 1.2) )
     actual_buffering_data_time = None
     strain_sampling_rate_status = "NONE"
     last_record_time = None
@@ -203,44 +203,45 @@ Bwim_process_status.Flag_data = Flag
 camera = ['']*CAM_NUMBER_MAX
 image_cam = ['']*CAM_NUMBER_MAX
 
-for n in range(CAM_NUMBER_MAX):
-    # time.sleep(10)
-    camera[n] = cv2.VideoCapture(RTSP_LINK[n])
-    image_cam[n] = ['']
-    try:
-        # Check if camera opened successfully
-        # if ( camera[n].isOpened() == True):
-        if (camera[n] is None):
-            print("[CAM-"+str(n+1)+"] NO STREAM")
-            # try again...
-        # Else is important to display error message on the screen if can.isOpened returns false
-        else:
-            read_Fail = True
-            while read_Fail:
-                time.sleep(1)
-                ret, frame = camera[n].read()
-                frame_size = sys.getsizeof(frame)
-                # print(ret)
-                # print(frame_size)
-                if ( frame_size > 10000 ) and (ret == True): # frame image have to more than 1KB
-                    print("[CAM-" + str(n+1) + "] STREAM OK ")
-                    read_Fail = False
-                else:
-                    print("[CAM-" + str(n+1) + "] STREAM FAIL!!")
-                    camera[n].released()
-                    time.sleep(10)
-                    camera[n] = cv2.VideoCapture(RTSP_LINK[n])
-    except:
-        print("[CAM-" + str(n+1) + "] Unavailable")
-        # try again...
-        camera[n] = cv2.VideoCapture(RTSP_LINK[n])
-        pass
-
-# sleep(2)
-# intial BWIM MAQTT connection
-MQTT_Bwim = mqtt.Client()
-# intial LPR Object
-LPR = LPRobj.LPR_CAM(MQTT_Bwim)
+# # thread cam
+# for n in range(CAM_NUMBER_MAX):
+#     # time.sleep(10)
+#     camera[n] = cv2.VideoCapture(RTSP_LINK[n])
+#     image_cam[n] = ['']
+#     try:
+#         # Check if camera opened successfully
+#         # if ( camera[n].isOpened() == True):
+#         if (camera[n] is None):
+#             print("[CAM-"+str(n+1)+"] NO STREAM")
+#             # try again...
+#         # Else is important to display error message on the screen if can.isOpened returns false
+#         else:
+#             read_Fail = True
+#             while read_Fail:
+#                 time.sleep(1)
+#                 ret, frame = camera[n].read()
+#                 frame_size = sys.getsizeof(frame)
+#                 # print(ret)
+#                 # print(frame_size)
+#                 if ( frame_size > 10000 ) and (ret == True): # frame image have to more than 1KB
+#                     print("[CAM-" + str(n+1) + "] STREAM OK ")
+#                     read_Fail = False
+#                 else:
+#                     print("[CAM-" + str(n+1) + "] STREAM FAIL!!")
+#                     camera[n].released()
+#                     time.sleep(10)
+#                     camera[n] = cv2.VideoCapture(RTSP_LINK[n])
+#     except:
+#         print("[CAM-" + str(n+1) + "] Unavailable")
+#         # try again...
+#         camera[n] = cv2.VideoCapture(RTSP_LINK[n])
+#         pass
+# 
+# # sleep(2)
+# # intial BWIM MAQTT connection
+# MQTT_Bwim = mqtt.Client()
+# # intial LPR Object
+# LPR = LPRobj.LPR_CAM(MQTT_Bwim)
 
 # collect images from all data_block and write to jpg files
 def event_image(event_block_id, cam_number, image_dir,block_id_finish):
@@ -328,8 +329,8 @@ def record_data(h, time_sec, data_block):
     del data_block.strain[:]
     del data_block.axle[:]
     # initial data_block start time
-    data_block.start_time = datetime.datetime.today().strftime("%Y-%m-%d %H:%M:%S-%f")
-    data_block.create_time = datetime.datetime.today().strftime('%Y%m%d_%H%M%S')
+    data_block.start_time = datetime.today().strftime("%Y-%m-%d %H:%M:%S-%f")
+    data_block.create_time = datetime.today().strftime('%Y%m%d_%H%M%S')
 
     # initial all list for recording
     number_of_sample = time_sec*STRAIN_SAMPLING_RATE
@@ -364,7 +365,7 @@ def record_data(h, time_sec, data_block):
         n = n+1
 
     # set end time recording
-    data_block.end_time = datetime.datetime.today().strftime("%Y-%m-%d %H:%M:%S-%f")
+    data_block.end_time = datetime.today().strftime("%Y-%m-%d %H:%M:%S-%f")
 
     # convert data block list to numpy array
     data_block.strain_array = np.asarray(data_block.strain)
@@ -428,7 +429,8 @@ def record_data(h, time_sec, data_block):
                 Event_Bwim[n].lpr_p[n] = 'NONE'
                 Event_Bwim[n].lpr_done[n] = 0
 
-                LPR.lpr_thread( data_block.start_time, Event_Bwim[n], n)
+                # # thread cam
+                # LPR.lpr_thread( data_block.start_time, Event_Bwim[n], n)
 
         elif (Event_Bwim[n].number == EVENT_BLOCK_BUFFER_MAX):
             # Get LPR picture after strain threshold occured 1 seconds ( next block )
@@ -710,9 +712,10 @@ def bwim_create_event_file( Bwim_event_data , event_number):
             # LPR.line_notify(json_data, event_create_time, event_number, line_notify_image, lpr_number[event_lane_cam], event_dir)
         else:
             print ("[LANE-" + str(event_number + 1) +"]: BWIM Unconfident!!!")
-
-        LPR.line_notify(json_data, event_create_time, event_number, line_notify_image, lpr_number[event_lane_cam],
-                        event_dir)
+        
+        # # thread cam
+        # LPR.line_notify(json_data, event_create_time, event_number, line_notify_image, lpr_number[event_lane_cam],
+        #                 event_dir)
 
         download_video_process(event_start_time, event_number, event_dir)
 
@@ -759,14 +762,14 @@ def camera_download_video(event_start_time, event_number, event_dir):
     # Define the input timezone (UTC+7)
     input_timezone = pytz.FixedOffset(420)  # 7 hours * 60 minutes
     # Parse the input time string into a naive datetime object
-    naive_datetime = datetime.datetime.strptime(event_start_time, '%Y-%m-%d %H:%M:%S-%f')
+    naive_datetime = datetime.strptime(event_start_time, '%Y-%m-%d %H:%M:%S-%f')
     # Localize the naive datetime object to the input timezone
     localized_datetime = input_timezone.localize(naive_datetime)
     # Convert the localized datetime to UTC
     utc_datetime = localized_datetime.astimezone(pytz.utc)
 
-    start_time = utc_datetime - datetime.timedelta(seconds=VIDEO_CAM_START[event_number])
-    end_time = utc_datetime + datetime.timedelta(seconds=VIDEO_CAM_STOP[event_number])
+    start_time = utc_datetime - timedelta(seconds=VIDEO_CAM_START[event_number])
+    end_time = utc_datetime + timedelta(seconds=VIDEO_CAM_STOP[event_number])
 
     # Format the UTC datetime into the desired output format
     start_time_str = start_time.strftime('%Y%m%dT%H%M%SZ')
@@ -774,7 +777,7 @@ def camera_download_video(event_start_time, event_number, event_dir):
 
     rtsp_url = VIDEO_LINK[event_number] + "?starttime=" + start_time_str + "&endtime=" +end_time_str
 
-    # time_name = datetime.datetime.today().strftime('%Y%m%d_%H%M%S')
+    # time_name = datetime.today().strftime('%Y%m%d_%H%M%S')
     # output_file =  time_name + ".mp4"
     # output_file = event_dir + "//video.mp4"
     event_name = event_dir.split("EVENT_BWIM")[-1]
@@ -977,13 +980,14 @@ def bwim_process():
     # camera grab image treading
     # camera_rtsp_testing()
 
-    threads = []
-    for i in range(CAM_NUMBER_MAX):
-        # start camera grab image thread form 2 IP CAM
-        t = threading.Thread(target=camera_grab_images, args=(i,))
-        # t.daemon=True
-        threads.append(t)
-        t.start()
+    # # thread cam
+    # threads = []
+    # for i in range(CAM_NUMBER_MAX):
+    #     # start camera grab image thread form 2 IP CAM
+    #     t = threading.Thread(target=camera_grab_images, args=(i,))
+    #     # t.daemon=True
+    #     threads.append(t)
+    #     t.start()
 
     # dailysummary = BWIMobj.DailySummary(MQTT_Bwim)
     # dailysummary.periodic_run()
@@ -998,7 +1002,10 @@ def bwim_process():
         start_buffering_time = datetime.now()
         for i in range(EVENT_BLOCK_BUFFER_MAX):# 0 to BWIM_BLOCK_NUMBER-1
             # run capture image thread into Data_Bwim Block
-            start_capture_image(Data_Bwim[i])
+            
+            # # thread cam
+            # start_capture_image(Data_Bwim[i])
+            
             # strain and axle data recording into Data_Bwim Block
             record_data(logger, EVENT_BLOCK_TIME, Data_Bwim[i])
             for n in range(EVENT_NUMBER_MAX):
