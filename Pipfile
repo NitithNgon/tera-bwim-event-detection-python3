@@ -1,0 +1,31 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+numpy = "*"
+requests = "*"
+scipy = "*"
+matplotlib = "*"
+pyyaml = "*"
+python-dotenv = "*"
+opencv-python = "*"
+pytest-mock = "*"
+pytest = "*"
+tesseract = "*"
+schedule = "*"
+ftd2xx = "*"
+paho-mqtt = "*"
+pytz = "*"
+psutil = "*"
+pytesseract = "*"
+2to3 = "*"
+
+[dev-packages]
+pysnooper = "*"
+autopep8 = "*"
+mypy = "*"
+
+[requires]
+python_version = "3.11.7"

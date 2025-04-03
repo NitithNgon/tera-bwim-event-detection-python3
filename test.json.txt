@@ -1,0 +1,33 @@
+{
+    "gross_vehicle_weight": 0.0, 
+    "lane": 0, 
+    "lpr_number": [
+        "ERROR", 
+        "70-9913"
+    ], 
+    "date_time": "2024-01-01 00:00:00", 
+    "overweight": false, 
+    "overweight_amount": 0, 
+    "confident": true, 
+    "velocity": 0, 
+    "bridge_name": "BANGKAPI", 
+    "axle_weight": [
+        1, 
+        1, 
+        1, 
+        1, 
+        1, 
+        1
+    ], 
+    "esal": 0, 
+    "event_tag": "FRIENDSHIP_20240117_110806_2", 
+    "axle_count": 0, 
+    "vehicle_type": 3, 
+    "axle_spacing": [
+        3.4093959731543606, 
+        1.3489932885906049, 
+        7.139261744966442, 
+        1.2986577181208077, 
+        1.3288590604026838
+    ]
+}
