@@ -21,6 +21,7 @@ pytz = "*"
 psutil = "*"
 pytesseract = "*"
 2to3 = "*"
+pandas = "*"
 
 [dev-packages]
 pysnooper = "*"
