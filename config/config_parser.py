@@ -16,6 +16,8 @@ def parse_config(version="default", config_file=CONFIG_FILE):
             if version != "default":
                 selected_config = config[version]
                 parsed_config.update(selected_config)
+                if parsed_config is None:
+                    raise ValueError(f"{version} in .env not exists in config.yaml or check config.yaml file")
             return parsed_config
     except KeyError as exception:
         print("Specified version does not exist in config file.")

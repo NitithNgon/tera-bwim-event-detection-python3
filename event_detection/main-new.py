@@ -1,7 +1,6 @@
 #!/usr/bin/env pytho
 import sys
 from os.path import isfile
-import errno
 import os
 import shutil  # built-in, no pip install needed
 import ftplib  # built-in, no pip install needed
@@ -22,14 +21,15 @@ from struct import *
 import cv2
 import subprocess
 import paho.mqtt.client as mqtt # pip install paho-mqtt
-import json
-import LPRobj
-from time import sleep
 import pytz
+import json
+import schedule
+from time import sleep
 # import websocket
 from py3_bwim_truck import subprocess_call_bwim_truck_as_main
 import psutil
 
+import LPRobj
 from event_detection.directory import (
     zip_directory,
     remove_directory,
@@ -42,19 +42,15 @@ from event_detection.bwim_obj import (
     Currently_bwim_process_status,
 )
 from config.config_parser import parse_config
+from config.get_config import(
+    get_preamble_config,
+    get_lane_config,
+)
 
 
 PATH_ENV_TESS = ".env-event-detection"
-if not isfile(PATH_ENV_TESS):
-    raise FileNotFoundError(
-        errno.ENOENT, os.strerror(errno.ENOENT), f"{PATH_ENV_TESS} was not found in CWD")
-env_event_detection = dotenv_values(PATH_ENV_TESS)
-bridge_name_config = env_event_detection["BRIDGE_NAME"] if env_event_detection["bridge_name"] else "default"
-path_config =env_event_detection["PATH_CONFIG"]
-preamble_config = parse_config(
-    config_file=path_config,
-    version= bridge_name_config,
-)
+env_event_detection, preamble_config = get_preamble_config(PATH_ENV_TESS)
+
 # IP CAMERA Parameters
 cam_user = env_event_detection["CAM_USER"]
 cam_pwd = env_event_detection["CAM_PWD"]
@@ -79,8 +75,6 @@ gauge_factor = preamble_config["gauge_factor"]	# quater bridge gaugae factor
 # strain event detection parameter [ event_channel_1 , event_channel_2 , ... , event_channel_n ]
 event_number_max = preamble_config["event_number_max"]	# channel of event number ( one event by strain threshold per channel) / represent event number for road lane in wight calculation
 strain_threshold_channel = preamble_config["strain_threshold_channel"]        # channel of strain use for event threshold detection
-# strain_threshold_microvolt = [400,400,400,400]  # first stage for event threshold detection //35 on calibrate use 25 rail is 150
-# strain_threshold_microvolt = [550,550,550,550]   # second stage for event threshold detection //40 on calibrate use 30 rail is 200
 strain_threshold_microvolt = preamble_config["strain_threshold_microvolt"]  # first stage for event threshold detection //35 on calibrate use 25 rail is 150
 strain_threshold_microvolt = preamble_config["strain_threshold_microvolt"]   # second stage for event threshold detection //40 on calibrate use 30 rail is 200
 strain_threshold_microvolt = [5]*event_number_max    # the different of strain value on Bwim_data pre-first block and last block, decision for end of event file detection
@@ -145,45 +139,45 @@ Bwim_process_status.Flag_data = Flag
 camera = ['']*cam_number_max
 image_cam = ['']*cam_number_max
 
-# # thread cam
-# for n in range(cam_number_max):
-#     # time.sleep(10)
-#     camera[n] = cv2.VideoCapture(rtsp_link[n])
-#     image_cam[n] = ['']
-#     try:
-#         # Check if camera opened successfully
-#         # if ( camera[n].isOpened() == True):
-#         if (camera[n] is None):
-#             print("[CAM-"+str(n+1)+"] NO STREAM")
-#             # try again...
-#         # Else is important to display error message on the screen if can.isOpened returns false
-#         else:
-#             read_Fail = True
-#             while read_Fail:
-#                 time.sleep(1)
-#                 ret, frame = camera[n].read()
-#                 frame_size = sys.getsizeof(frame)
-#                 # print(ret)
-#                 # print(frame_size)
-#                 if ( frame_size > 10000 ) and (ret == True): # frame image have to more than 1KB
-#                     print("[CAM-" + str(n+1) + "] STREAM OK ")
-#                     read_Fail = False
-#                 else:
-#                     print("[CAM-" + str(n+1) + "] STREAM FAIL!!")
-#                     camera[n].released()
-#                     time.sleep(10)
-#                     camera[n] = cv2.VideoCapture(rtsp_link[n])
-#     except:
-#         print("[CAM-" + str(n+1) + "] Unavailable")
-#         # try again...
-#         camera[n] = cv2.VideoCapture(rtsp_link[n])
-#         pass
-# 
-# # sleep(2)
-# # intial BWIM MAQTT connection
-# MQTT_Bwim = mqtt.Client()
-# # intial LPR Object
-# LPR = LPRobj.LPR_CAM(MQTT_Bwim)
+# thread cam
+for n in range(cam_number_max):
+    # time.sleep(10)
+    camera[n] = cv2.VideoCapture(rtsp_link[n])
+    image_cam[n] = ['']
+    try:
+        # Check if camera opened successfully
+        # if ( camera[n].isOpened() == True):
+        if (camera[n] is None):
+            print("[CAM-"+str(n+1)+"] NO STREAM")
+            # try again...
+        # Else is important to display error message on the screen if can.isOpened returns false
+        else:
+            read_Fail = True
+            while read_Fail:
+                time.sleep(1)
+                ret, frame = camera[n].read()
+                frame_size = sys.getsizeof(frame)
+                # print(ret)
+                # print(frame_size)
+                if ( frame_size > 10000 ) and (ret == True): # frame image have to more than 1KB
+                    print("[CAM-" + str(n+1) + "] STREAM OK ")
+                    read_Fail = False
+                else:
+                    print("[CAM-" + str(n+1) + "] STREAM FAIL!!")
+                    camera[n].released()
+                    time.sleep(10)
+                    camera[n] = cv2.VideoCapture(rtsp_link[n])
+    except:
+        print("[CAM-" + str(n+1) + "] Unavailable")
+        # try again...
+        camera[n] = cv2.VideoCapture(rtsp_link[n])
+        pass
+
+# sleep(2)
+# intial BWIM MAQTT connection
+MQTT_Bwim = mqtt.Client()
+# intial LPR Object
+LPR = LPRobj.LPR_CAM(MQTT_Bwim)
 
 # collect images from all data_block and write to jpg files
 def event_image(event_block_id, cam_number, image_dir,block_id_finish):
@@ -371,8 +365,8 @@ def record_data(h, time_sec, data_block):
                 Event_Bwim[n].lpr_p[n] = 'NONE'
                 Event_Bwim[n].lpr_done[n] = 0
 
-                # # thread cam
-                # LPR.lpr_thread( data_block.start_time, Event_Bwim[n], n)
+                # thread cam
+                LPR.lpr_thread( data_block.start_time, Event_Bwim[n], n)
 
         elif (Event_Bwim[n].number == event_block_buffer_max):
             # Get LPR picture after strain threshold occured 1 seconds ( next block )
@@ -499,9 +493,9 @@ def bwim_create_event_file( Bwim_event_data , event_number):
 
 
     # plot strain data
-    strain_plot_list_by_lane = strain_plot_lane_ch_map.get(event_number + 1, strain_plot_ch_list)
+    strain_plot_list_by_lane = strain_plot_lane_ch_map.get(str(event_number + 1), strain_plot_ch_list)
     for ch_num in strain_plot_list_by_lane:
-        ch_name = strain_ch_num_to_sensor_name.get(ch_num, ch_num)
+        ch_name = strain_ch_num_to_sensor_name.get(str(ch_num), ch_num)
         ch_index = ch_num - 1
         axs[0].plot(event_strain_array[:, ch_index], label='%s' % (ch_name))
     axs[0].set_title('%s : Event Lane-%s' % (bridge_name, event_number + 1), fontweight='bold')
@@ -655,9 +649,9 @@ def bwim_create_event_file( Bwim_event_data , event_number):
         else:
             print ("[LANE-" + str(event_number + 1) +"]: BWIM Unconfident!!!")
         
-        # # thread cam
-        # LPR.line_notify(json_data, event_create_time, event_number, line_notify_image, lpr_number[event_lane_cam],
-        #                 event_dir)
+        # thread cam
+        LPR.line_notify(json_data, event_create_time, event_number, line_notify_image, lpr_number[event_lane_cam],
+                        event_dir)
 
         download_video_process(event_start_time, event_number, event_dir)
 
@@ -692,10 +686,12 @@ def camera_grab_images(cam_number):
         # camera[cam_number].grab()
         r,  image = camera[cam_number].read()
         if r == False:
-            print("[CAM-"+str(cam_number+1)+"]: Can't read, Grab again")
+            lane_number = str(cam_number+1)
+            print("[CAM-"+lane_number+"]: Can't read, Grab again")
             camera[cam_number].release()
             sleep(0.5)
-            camera[cam_number] = cv2.VideoCapture(rtsp_link[cam_number])
+            lane_number = get_lane_config(preamble_config, lane_number)
+            camera[cam_number] = cv2.VideoCapture(lane_number["rtsp_link"])
         else:
             image_cam[cam_number] = image
 
@@ -859,14 +855,14 @@ def bwim_process():
     # camera grab image treading
     # camera_rtsp_testing()
 
-    # # thread cam
-    # threads = []
-    # for i in range(cam_number_max):
-    #     # start camera grab image thread form 2 IP CAM
-    #     t = threading.Thread(target=camera_grab_images, args=(i,))
-    #     # t.daemon=True
-    #     threads.append(t)
-    #     t.start()
+    # thread cam
+    threads = []
+    for i in range(cam_number_max):
+        # start camera grab image thread form 2 IP CAM
+        t = threading.Thread(target=camera_grab_images, args=(i,))
+        # t.daemon=True
+        threads.append(t)
+        t.start()
 
     # dailysummary = BWIMobj.DailySummary(MQTT_Bwim)
     # dailysummary.periodic_run()
@@ -882,8 +878,8 @@ def bwim_process():
         for i in range(event_block_buffer_max):# 0 to BWIM_BLOCK_NUMBER-1
             # run capture image thread into Data_Bwim Block
             
-            # # thread cam
-            # start_capture_image(Data_Bwim[i])
+            # thread cam
+            start_capture_image(Data_Bwim[i])
             
             # strain and axle data recording into Data_Bwim Block
             record_data(logger, event_block_time, Data_Bwim[i])
@@ -944,11 +940,11 @@ def bwim_process():
 
 
         # scheduler for move event directory from onedrive to local backup directory on date 1,10,20 1:01AM
-        # if (time.localtime().tm_hour == 31) and (time.localtime().tm_min == 1) and (Flag.event_backup == 0):
-        #     if ( time.localtime().tm_mday == 1) or ( time.localtime().tm_mday == 10) or ( time.localtime().tm_mday == 20):
-        #         t = threading.Thread(target=backup_event_file, args=(time.localtime().tm_mday,time.localtime().tm_mon,time.localtime().tm_year,))
-        #         t.start()
-        #         Flag.event_backup = 1
+        if (time.localtime().tm_hour == 31) and (time.localtime().tm_min == 1) and (Flag.event_backup == 0):
+            if ( time.localtime().tm_mday == 1) or ( time.localtime().tm_mday == 10) or ( time.localtime().tm_mday == 20):
+                t = threading.Thread(target=backup_event_file, args=(time.localtime().tm_mday,time.localtime().tm_mon,time.localtime().tm_year,))
+                t.start()
+                Flag.event_backup = 1
 
         # system shutdown process when Battery low alert
         if (Flag.system_shutdown == 1):
