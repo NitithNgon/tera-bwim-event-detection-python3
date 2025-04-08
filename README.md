@@ -18,6 +18,15 @@ https://www.python.org/downloads/release/python-2718/
     - EVENT_DIR_VERSION = "DEVELOP"
     - CURRENT_WORKING_DIR = "ABS/PATH/TO/tera-bwim-control-analysis-system"
     - PATH_PYTHON = "ABS/PATH/TO/PYTHON311"
-    - THINGSBOARD_URI = "http://our_thingsboard_uri/api/v1/integrations/http"
-    - THINGSBOARD_ACCESS_TOKEN = "xxxxxxxxxxxxxxxxxxxxxxxx"
     - NEOWAVE_PIC_URI = "https://cloud_for_pic"
+
+5. Create `.env-event-detection` file with these pattern <br>
+    - BRIDGE_NAME = "BANGPHLAT"
+    - CONFIG_VERSION = "default"
+    - PATH_CONFIG = "./config/config.yaml"
+    - CAM_USER = 'admin'
+    - CAM_PWD = 'Alphax123'
+    - EVENT_UNCLASSIFIED_SYNOLOGY_DRIVE = "C:\SynologyDrive\BWIM_BMA_002\EVENT_UNCLASSIFIED" # folder which store unclassified event
+    - EVENT_BWIM_SYNOLOGY_DRIVE = "C:\SynologyDrive\BWIM_BMA_002\EVENT_BWIM"
+    - EVENT_VIDEO_SYNOLOGY_DRIVE = "C:\SynologyDrive\www\BMA002_EVENT"   # folder which store event video
+    - EVENT_FTP_PATH = '/home/www/BMA002_EVENT'
