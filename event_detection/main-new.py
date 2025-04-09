@@ -41,10 +41,9 @@ from event_detection.bwim_obj import (
     Bwim_flag,
     Currently_bwim_process_status,
 )
-from config.config_parser import parse_config
 from config.get_config import(
     get_preamble_config,
-    get_lane_config,
+    get_all_lane_config,
 )
 
 
@@ -55,7 +54,6 @@ env_event_detection, preamble_config = get_preamble_config(PATH_ENV_TESS)
 cam_user = env_event_detection["CAM_USER"]
 cam_pwd = env_event_detection["CAM_PWD"]
 cam_number_max = preamble_config["cam_number_max"]
-rtsp_link = preamble_config["rtsp_link"]
 
 # basic parameters about strain data
 bridge_name = preamble_config["bridge_name"]
@@ -74,30 +72,20 @@ gauge_factor = preamble_config["gauge_factor"]	# quater bridge gaugae factor
 
 # strain event detection parameter [ event_channel_1 , event_channel_2 , ... , event_channel_n ]
 event_number_max = preamble_config["event_number_max"]	# channel of event number ( one event by strain threshold per channel) / represent event number for road lane in wight calculation
-strain_threshold_channel = preamble_config["strain_threshold_channel"]        # channel of strain use for event threshold detection
-strain_threshold_microvolt = preamble_config["strain_threshold_microvolt"]  # first stage for event threshold detection //35 on calibrate use 25 rail is 150
-strain_threshold_microvolt = preamble_config["strain_threshold_microvolt"]   # second stage for event threshold detection //40 on calibrate use 30 rail is 200
-strain_threshold_microvolt = [5]*event_number_max    # the different of strain value on Bwim_data pre-first block and last block, decision for end of event file detection
+all_lane_config_dict = get_all_lane_config(preamble_config, event_number_max)    # keys is lane_number [1,2,3,4]
+event_pre_post_microvolt_diff = [5]*event_number_max    # the different of strain value on Bwim_data pre-first block and last block, decision for end of event file detection
                                            # when set '0' is disable this function , end of event file upon event_post_block only
+
 # strain event block recording parameter
 event_block_time = preamble_config["event_block_time"]	# recording and detect every xx second
 event_pre_block = [1]*event_number_max # number of previous event block in event file calculation
 event_post_block = [2]*event_number_max	# maximum number of post event block in event file when pre_post threshold ara fail or disable
 event_block_buffer_max = preamble_config["event_block_buffer_max"]	# circular block buffer for recording data
-
-# event cam image recording : CAM-1 = lane 1 ( To Klongton ) / CAM-2 = lane 2 ( To Pratunam )
-event_cam_start =  preamble_config["event_cam_start"]		# cam start time when event occurred for each road lane [0,1]
-event_cam_finish = preamble_config["event_cam_finish"]	# cam stop time when event occurred for each road lane [-3,-2]
-
 event_unclassified_synology_drive = env_event_detection["EVENT_UNCLASSIFIED_SYNOLOGY_DRIVE"] # folder which store unclassified event
 event_bwim_synology_drive = env_event_detection["EVENT_BWIM_SYNOLOGY_DRIVE"]
 event_video_sysnology_drive = env_event_detection["EVENT_VIDEO_SYNOLOGY_DRIVE"]   # folder which store event video
 event_ftp_path = env_event_detection["EVENT_FTP_PATH"]
 
-video_link = preamble_config["video_link"]
-# event cam image recording : CAM-1 = lane 1 ( To Klongton ) / CAM-2 = lane 2 ( To Pratunam )
-video_cam_start = preamble_config["video_cam_start"]		# cam start time when event occurred for each road lane ( 10 sec recoding )
-video_cam_stop = preamble_config["video_cam_stop"]		# cam stop time when event occurred for each road lane ( 10 sec recording )
 strain_plot_ch_list = preamble_config["strain_plot_ch_list"]   # List of All-CH-Number
 strain_ch_num_to_sensor_name = preamble_config["strain_ch_num_to_sensor_name"]
 strain_plot_lane_ch_map = preamble_config["strain_plot_lane_ch_map"]
@@ -142,7 +130,8 @@ image_cam = ['']*cam_number_max
 # thread cam
 for n in range(cam_number_max):
     # time.sleep(10)
-    camera[n] = cv2.VideoCapture(rtsp_link[n])
+    rtsp_link = all_lane_config_dict[n+1].get("rtsp_link")
+    camera[n] = cv2.VideoCapture(rtsp_link)
     image_cam[n] = ['']
     try:
         # Check if camera opened successfully
@@ -166,11 +155,11 @@ for n in range(cam_number_max):
                     print("[CAM-" + str(n+1) + "] STREAM FAIL!!")
                     camera[n].released()
                     time.sleep(10)
-                    camera[n] = cv2.VideoCapture(rtsp_link[n])
+                    camera[n] = cv2.VideoCapture(rtsp_link)
     except:
         print("[CAM-" + str(n+1) + "] Unavailable")
         # try again...
-        camera[n] = cv2.VideoCapture(rtsp_link[n])
+        camera[n] = cv2.VideoCapture(rtsp_link)
         pass
 
 # sleep(2)
@@ -182,8 +171,10 @@ LPR = LPRobj.LPR_CAM(MQTT_Bwim)
 # collect images from all data_block and write to jpg files
 def event_image(event_block_id, cam_number, image_dir,block_id_finish):
     # initial event cam block index
-    idx_cam_start = event_block_id - event_cam_start[cam_number]
-    idx_cam_finish = event_block_id - event_cam_finish[cam_number]
+    event_cam_start = all_lane_config_dict[cam_number+1].get("event_cam_start")
+    event_cam_finish = all_lane_config_dict[cam_number+1].get("event_cam_finish")
+    idx_cam_start = event_block_id - event_cam_start
+    idx_cam_finish = event_block_id - event_cam_finish
 
     # append relate block data to event data
     for i in range(idx_cam_start, idx_cam_finish + 1):  # event_cam_start to event_cam_finish
@@ -310,17 +301,19 @@ def record_data(h, time_sec, data_block):
     # check event block by compare max/min value with strain_threshold_microvolt
     for n in range(event_number_max):
         # operate when event not occurred
-        data_block.min_strain[n] = np.amin(data_block.strain_array, axis=0)[strain_threshold_channel[n] - 1]  # get minimum value within strain data block
-        data_block.max_strain[n] = np.amax(data_block.strain_array, axis=0)[strain_threshold_channel[n] - 1]  # get maximum value within strain data block
-        data_block.min_index[n] = np.argmin(data_block.strain_array, axis=0)[strain_threshold_channel[n] - 1]
-        data_block.max_index[n] = np.argmax(data_block.strain_array, axis=0)[strain_threshold_channel[n] - 1]
+        strain_threshold_channel = all_lane_config_dict[n+1].get("strain_threshold_channel")
+        data_block.min_strain[n] = np.amin(data_block.strain_array, axis=0)[strain_threshold_channel - 1]  # get minimum value within strain data block
+        data_block.max_strain[n] = np.amax(data_block.strain_array, axis=0)[strain_threshold_channel - 1]  # get maximum value within strain data block
+        data_block.min_index[n] = np.argmin(data_block.strain_array, axis=0)[strain_threshold_channel - 1]
+        data_block.max_index[n] = np.argmax(data_block.strain_array, axis=0)[strain_threshold_channel - 1]
         data_block.diff_max_min_strain[n] = data_block.max_strain[n] - data_block.min_strain[n]
 
     # for n in range(event_number_max):
     for n in [0,1,3,2]:
         if (Event_Bwim[n].number  == 0):
             # check max/min with threshold micro volt
-            if ((data_block.diff_max_min_strain[n]) > strain_threshold_microvolt[n]) and (data_block.max_index[n] > data_block.min_index[n] ):
+            strain_threshold_microvolt = all_lane_config_dict[n+1].get("strain_threshold_microvolt")
+            if ((data_block.diff_max_min_strain[n]) > strain_threshold_microvolt) and (data_block.max_index[n] > data_block.min_index[n] ):
 
                 if ( n == 0) and ( data_block.diff_max_min_strain[1] > data_block.diff_max_min_strain[0] ) and (Event_Bwim[1].number == 0):
                     # event lane 1 are dominant
@@ -445,8 +438,9 @@ def bwim_create_event_file( Bwim_event_data , event_number):
         event_min_strain.append(Data_Bwim[j].min_strain[event_number])
         event_max_strain.append(Data_Bwim[j].max_strain[event_number])
 
-    # check event block's max / min strain data with strain_threshold_microvolt
-    if (max(event_max_strain) - min(event_min_strain)) < strain_threshold_microvolt[event_number]:
+    # check event block's max / min strain data with event_threshold_microvolt
+    event_threshold_microvolt = all_lane_config_dict[event_number+1].get("event_threshold_microvolt")
+    if (max(event_max_strain) - min(event_min_strain)) < event_threshold_microvolt:
         print ("[LANE-" + str(event_number+1) + "]: No Event : less than threshold.")
         # # remove the LPR image
         # # print "LPR="+lpr_image
@@ -686,12 +680,11 @@ def camera_grab_images(cam_number):
         # camera[cam_number].grab()
         r,  image = camera[cam_number].read()
         if r == False:
-            lane_number = str(cam_number+1)
-            print("[CAM-"+lane_number+"]: Can't read, Grab again")
+            print("[CAM-"+str(cam_number+1)+"]: Can't read, Grab again")
             camera[cam_number].release()
             sleep(0.5)
-            lane_number = get_lane_config(preamble_config, lane_number)
-            camera[cam_number] = cv2.VideoCapture(lane_number["rtsp_link"])
+            rtsp_link = all_lane_config_dict[cam_number+1].get("rtsp_link")
+            camera[cam_number] = cv2.VideoCapture(rtsp_link)
         else:
             image_cam[cam_number] = image
 
@@ -705,15 +698,19 @@ def camera_download_video(event_start_time, event_number, event_dir):
     localized_datetime = input_timezone.localize(naive_datetime)
     # Convert the localized datetime to UTC
     utc_datetime = localized_datetime.astimezone(pytz.utc)
+    
+    video_cam_start = all_lane_config_dict[event_number+1].get("video_cam_start")
+    video_cam_stop = all_lane_config_dict[event_number+1].get("video_cam_stop")
+    video_link = all_lane_config_dict[event_number+1].get("video_link")
 
-    start_time = utc_datetime - timedelta(seconds=video_cam_start[event_number])
-    end_time = utc_datetime + timedelta(seconds=video_cam_stop[event_number])
+    start_time = utc_datetime - timedelta(seconds=video_cam_start)
+    end_time = utc_datetime + timedelta(seconds=video_cam_stop)
 
     # Format the UTC datetime into the desired output format
     start_time_str = start_time.strftime('%Y%m%dT%H%M%SZ')
     end_time_str =  end_time.strftime('%Y%m%dT%H%M%SZ')
 
-    rtsp_url = video_link[event_number] + "?starttime=" + start_time_str + "&endtime=" +end_time_str
+    rtsp_url = video_link + "?starttime=" + start_time_str + "&endtime=" +end_time_str
 
     # time_name = datetime.today().strftime('%Y%m%d_%H%M%S')
     # output_file =  time_name + ".mp4"
@@ -887,14 +884,14 @@ def bwim_process():
                 # checking event occur
                 if( Event_Bwim[n].number > 0):
                     # continue recording till event finish condition
-                    if (strain_threshold_microvolt[n] != 0):
+                    if (event_pre_post_microvolt_diff[n] != 0):
                         #get different between first block and last block to determine ending event
                         Diff_Strain_End = (Data_Bwim[i].min_strain[n] - Data_Bwim[Event_Bwim[n].block_id - event_pre_block[n]].min_strain[n])
                     else:
-                        Diff_Strain_End = strain_threshold_microvolt[n] + 1  # disable this function by set Diff_Strain_End to threshold
+                        Diff_Strain_End = event_pre_post_microvolt_diff[n] + 1  # disable this function by set Diff_Strain_End to threshold
 
                     # determine the ending event by checking Diff_Strain_End or event_post_block
-                    if ((Event_Bwim[n].number >= 2) and ((Diff_Strain_End < strain_threshold_microvolt[n])or(Event_Bwim[n].number > event_post_block[n]))):
+                    if ((Event_Bwim[n].number >= 2) and ((Diff_Strain_End < event_pre_post_microvolt_diff[n])or(Event_Bwim[n].number > event_post_block[n]))):
                         Bwim_process_status.last_event_time = datetime.now()
                         # running event process
                         # event_process(Event_Bwim[n].block_id,Event_Bwim[n].number ,n, Event_Bwim[n].lpr_bg[0], Event_Bwim[n].lpr_p[0],Event_Bwim[n].lpr[0])

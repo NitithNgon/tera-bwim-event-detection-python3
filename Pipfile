@@ -29,4 +29,4 @@ autopep8 = "*"
 mypy = "*"
 
 [requires]
-python_version = "3.11.5"
+python_version = "3.11.7"
