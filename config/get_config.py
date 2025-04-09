@@ -24,7 +24,7 @@ def get_lane_config(preamble_config, lane_number: str):
     lane_config = preamble_config[config_version]
     return lane_config
 
-def get_all_lane_config( preamble_config, event_number_max: int):
+def preload_all_lane_config( preamble_config, event_number_max: int):
     all_lane_config={}
     for lane_number in range(1,event_number_max+1):
         all_lane_config[lane_number] = get_lane_config(preamble_config, str(lane_number))

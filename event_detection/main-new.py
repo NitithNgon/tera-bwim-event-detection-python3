@@ -43,7 +43,7 @@ from event_detection.bwim_obj import (
 )
 from config.get_config import(
     get_preamble_config,
-    get_all_lane_config,
+    preload_all_lane_config,
 )
 
 
@@ -72,7 +72,7 @@ gauge_factor = preamble_config["gauge_factor"]	# quater bridge gaugae factor
 
 # strain event detection parameter [ event_channel_1 , event_channel_2 , ... , event_channel_n ]
 event_number_max = preamble_config["event_number_max"]	# channel of event number ( one event by strain threshold per channel) / represent event number for road lane in wight calculation
-all_lane_config_dict = get_all_lane_config(preamble_config, event_number_max)    # keys is lane_number [1,2,3,4]
+all_lane_config_dict = preload_all_lane_config(preamble_config, event_number_max)    # keys is lane_number [1,2,3,4]
 event_pre_post_microvolt_diff = [5]*event_number_max    # the different of strain value on Bwim_data pre-first block and last block, decision for end of event file detection
                                            # when set '0' is disable this function , end of event file upon event_post_block only
 
