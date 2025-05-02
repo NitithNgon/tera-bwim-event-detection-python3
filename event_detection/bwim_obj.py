@@ -1,4 +1,18 @@
-import numpy as np				# pip install numpy
+import numpy as np
+from datetime import timedelta
+from config.get_config import(
+    get_preamble_config,
+    preload_all_lane_config,
+)
+from event_detection.__main__ import(
+    strain_number,
+    axle_number,
+    event_number_max,
+    cam_number_max,
+    event_block_buffer_max,
+    event_block_time,
+)
+
 
 class Bwim_data:
     id = 0                  # block index number
@@ -7,13 +21,13 @@ class Bwim_data:
     create_time = ""        # create_time for event file name
     strain = []             # list of strain data
     axle = []               # list of axle data
-    strain_array = np.arange(STRAIN_NUMBER)     # numpy array of strain data
-    axle_array = np.arange(AXLE_NUMBER)         # numpy array of axle data
-    min_strain = [0]*EVENT_NUMBER_MAX           # minimum strain value each event number ( road lane )
-    max_strain = [0]*EVENT_NUMBER_MAX           # minimum strain value each event number ( road lane )
-    diff_max_min_strain = [0]*EVENT_NUMBER_MAX  # delta max min strain value each event number ( road lane )
-    min_index = [0]*EVENT_NUMBER_MAX            # np index for min strain each event number ( road lane )
-    max_index = [0]*EVENT_NUMBER_MAX            # np index for max strain each event number ( road lane )
+    strain_array = np.arange(strain_number)     # numpy array of strain data
+    axle_array = np.arange(axle_number)         # numpy array of axle data
+    min_strain = [0]*event_number_max           # minimum strain value each event number ( road lane )
+    max_strain = [0]*event_number_max           # minimum strain value each event number ( road lane )
+    diff_max_min_strain = [0]*event_number_max  # delta max min strain value each event number ( road lane )
+    min_index = [0]*event_number_max            # np index for min strain each event number ( road lane )
+    max_index = [0]*event_number_max            # np index for max strain each event number ( road lane )
     cam_image = ['']                            # CCTV image data grab retrieve
 
 
@@ -22,10 +36,10 @@ class Bwim_event:
     number = 0      # number of all Bwim_data block to recording in event
     min_strain = 0  # min strain value of all Bwim_data block in event
     max_strain = 0  # max strain value of all Bwim_data block in event
-    lpr = ["" for x in range(CAM_NUMBER_MAX)]   # lpr plate string , NONE is initial or already removed image , ERROR is invalid lpr image in lpr_process
-    lpr_bg = ["" for x in range(CAM_NUMBER_MAX)]# lpr background crop image path , NONE is initial or already removed image , ERROR is invalid lpr image in lpr_process
-    lpr_p = ["" for x in range(CAM_NUMBER_MAX)] # lpr plate image path , NONE is initial or already removed image , ERROR is invalid lpr image in lpr_process
-    lpr_done = [0 for x in range(CAM_NUMBER_MAX)]# lpr processing are finish
+    lpr = ["" for x in range(cam_number_max)]   # lpr plate string , NONE is initial or already removed image , ERROR is invalid lpr image in lpr_process
+    lpr_bg = ["" for x in range(cam_number_max)]# lpr background crop image path , NONE is initial or already removed image , ERROR is invalid lpr image in lpr_process
+    lpr_p = ["" for x in range(cam_number_max)] # lpr plate image path , NONE is initial or already removed image , ERROR is invalid lpr image in lpr_process
+    lpr_done = [0 for x in range(cam_number_max)]# lpr processing are finish
 
 class Bwim_flag:
     system_shutdown = 0  # System Shutdown Flag
@@ -37,7 +51,7 @@ class Bwim_flag:
     event_backup = 0
 
 class Currently_bwim_process_status:
-    expacted_buffering_data_time = timedelta(seconds= int(EVENT_BLOCK_BUFFER_MAX * EVENT_BLOCK_TIME * 1.2) )
+    expacted_buffering_data_time = timedelta(seconds= int(event_block_buffer_max * event_block_time * 1.2) )
     actual_buffering_data_time = None
     strain_sampling_rate_status = "NONE"
     last_record_time = None
