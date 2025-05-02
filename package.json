@@ -1,0 +1,25 @@
+{
+  "name": "migration_tera_bwim_event_detection",
+  "version": "1.0.0",
+  "description": "BWIM-system required 2 parts of code, `tera-bwim-event-detection` and `tera-bwim-control-analysis-system`. <br>\r This repository is `tera-bwim-event-detection` running on python2.7",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NitithNgon/tera-bwim-event-detection-python3.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/NitithNgon/tera-bwim-event-detection-python3/issues"
+  },
+  "homepage": "https://github.com/NitithNgon/tera-bwim-event-detection-python3#readme",
+  "dependencies": {
+    "body-parser": "^2.2.0",
+    "express": "^5.1.0",
+    "luxon": "^3.6.1"
+  }
+}

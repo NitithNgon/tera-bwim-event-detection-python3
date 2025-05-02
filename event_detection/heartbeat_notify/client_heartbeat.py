@@ -2,11 +2,13 @@
 import requests
 import time
 import json
+# from main import Bwim_process_status
 
+LOCAL_HOST_IP = "127.0.0.1"
+PORT = "5000"
 DEVICE_ID = "device_1"
-SERVER_URL = "http://192.168.1.76:5000/" #node local
-#run "ipconfig" to get sever ip-local IPv4 address
-from main import Bwim_process_status
+SERVER_URL = f"http://{LOCAL_HOST_IP}:{PORT}" #node local
+
 
 def is_server_ready(url, timeout=5):
     while True:
@@ -27,11 +29,14 @@ while True:
     is_server_ready(SERVER_URL)
     try:
         playload={}
-        playload["device_status"] =json.dumps(Bwim_process_status, default=lambda obj: obj.__dict__, indent=4)
+        # playload["device_status"] = {}
+        # playload["device_status"] = json.dumps(Bwim_process_status, default=lambda obj: obj.__dict__, indent=4)
         playload["device_id"]= DEVICE_ID
-        response = requests.post("{}heartbeat".format(SERVER_URL), data=playload, headers={'Content-Type': 'application/json'})
-        print("DEVICE_ID: {} Heartbeat sent.".format(DEVICE_ID))
+        response = requests.post(f"{SERVER_URL}/heartbeat",
+            headers={'Content-Type': 'application/json'}, json=playload,)
+        
+        print(f"DEVICE_ID: {DEVICE_ID} Heartbeat sent.      res: {response.json()}")
     except Exception as e:
-        print("Failed to send heartbeat: {}".format(e))
+        print(f"Failed to send heartbeat: {e}      res: {response.json()}")
 
     time.sleep(10)  # Send heartbeat every 60 seconds

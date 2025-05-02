@@ -22,6 +22,7 @@ psutil = "*"
 pytesseract = "*"
 2to3 = "*"
 pandas = "*"
+flask = "*"
 
 [dev-packages]
 pysnooper = "*"

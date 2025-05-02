@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const { DateTime } = require('luxon');
 // npm install express body-parser luxon
+// node path/file.js
 
 const app = express();
 app.use(bodyParser.json());
@@ -67,7 +68,8 @@ function monitorInactiveDevices() {
 monitorInactiveDevices();
 
 // Start the server
-const PORT = 5000;
+const host="127.0.0.1";
+const PORT = "5000";
 app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server running on http://${host}:${PORT}`);
 });
