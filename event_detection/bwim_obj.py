@@ -41,6 +41,7 @@ class Bwim_event:
     lpr_p = ["" for x in range(cam_number_max)] # lpr plate image path , NONE is initial or already removed image , ERROR is invalid lpr image in lpr_process
     lpr_done = [0 for x in range(cam_number_max)]# lpr processing are finish
 
+
 class Bwim_flag:
     system_shutdown = 0  # System Shutdown Flag
     event_1_triggered = 0
@@ -50,6 +51,7 @@ class Bwim_flag:
     lpr_summary = 0
     event_backup = 0
 
+
 class Currently_bwim_process_status:
     expacted_buffering_data_time = timedelta(seconds= int(event_block_buffer_max * event_block_time * 1.2) )
     actual_buffering_data_time = None
@@ -57,3 +59,5 @@ class Currently_bwim_process_status:
     last_record_time = None
     last_event_time = None
     Flag_data = Bwim_flag
+
+    
