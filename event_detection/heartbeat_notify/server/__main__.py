@@ -23,7 +23,7 @@ def heartbeat():
 
     if not data:
         return jsonify({"error": "Invalid JSON body"}), 400
-
+    print(data)
     device_id = data.get('device_id')
     status_data = data.get('device_status', {})  # Default to empty dict if not provided
 
@@ -49,6 +49,7 @@ def check_inactive_devices():
         diff_time = (now - last_time)
         if diff_time > timeout:
             inactive_devices[device_id] = status    # Group: inactiveDevices
+            print(status)
         else:
             active_devices[device_id] = status  # Group: activeDevice
 

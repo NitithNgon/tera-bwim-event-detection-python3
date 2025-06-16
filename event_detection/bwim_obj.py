@@ -1,9 +1,6 @@
 import numpy as np
 from datetime import timedelta
-from config.get_config import(
-    get_preamble_config,
-    preload_all_lane_config,
-)
+
 from event_detection.__main__ import(
     strain_number,
     axle_number,

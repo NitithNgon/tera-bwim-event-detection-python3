@@ -45,6 +45,7 @@ from config.get_config import(
     get_preamble_config,
     preload_all_lane_config,
 )
+from heartbeat_notify import client_heartbeat as client_HB
 
 
 PATH_ENV_TESS = ".env-event-detection"
@@ -122,6 +123,8 @@ Flag.event_backup = 0
 # initial Bwim_process_status
 Bwim_process_status = Currently_bwim_process_status()
 Bwim_process_status.Flag_data = Flag
+client_heartbeat_threads = threading.Thread(target=client_HB.heartbeat_sender, args=(Bwim_process_status,), daemon=True)
+client_heartbeat_threads.start()
 
 #initial openCV RTSP video capture
 camera = ['']*cam_number_max

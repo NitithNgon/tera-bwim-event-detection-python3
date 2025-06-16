@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 import requests
 import time
 import json
-# from main import Bwim_process_status
 
 LOCAL_HOST_IP = "127.0.0.1"
 PORT = "5000"
@@ -24,19 +22,22 @@ def is_server_ready(url, timeout=5):
 
         time.sleep(5)  # Wait before retrying
 
-while True:
-    # **Wait until the server is ready
-    is_server_ready(SERVER_URL)
-    try:
-        playload={}
-        # playload["device_status"] = {}
-        # playload["device_status"] = json.dumps(Bwim_process_status, default=lambda obj: obj.__dict__, indent=4)
-        playload["device_id"]= DEVICE_ID
-        response = requests.post(f"{SERVER_URL}/heartbeat",
-            headers={'Content-Type': 'application/json'}, json=playload,)
+def heartbeat_sender(Bwim_process_status):
+    while True:
         
-        print(f"DEVICE_ID: {DEVICE_ID} Heartbeat sent.      res: {response.json()}")
-    except Exception as e:
-        print(f"Failed to send heartbeat: {e}      res: {response.json()}")
+        # Wait until the server is ready
+        is_server_ready(SERVER_URL)
 
-    time.sleep(10)  # Send heartbeat every 60 seconds
+        try:
+            playload={}
+            playload["device_status"] = {}
+            playload["device_status"] = json.dumps(Bwim_process_status, default=lambda obj: obj.__dict__, indent=4)
+            playload["device_id"]= DEVICE_ID
+            response = requests.post(f"{SERVER_URL}/heartbeat",
+                headers={'Content-Type': 'application/json'}, json=playload,)
+            
+            print(f"DEVICE_ID: {DEVICE_ID} Heartbeat sent.      res: {response.json()}")
+        except Exception as e:
+            print(f"Failed to send heartbeat: {e}      res: {response.json()}")
+
+        time.sleep(10)  # Send heartbeat every 10 seconds
