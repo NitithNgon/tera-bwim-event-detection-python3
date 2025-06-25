@@ -9,8 +9,7 @@ INTERVAL_SECONDS = 10
 
 
 app = Flask(__name__)
-device_status = {}  # Store last heartbeat timestamps
-
+device_status = {}
 
 @app.route('/', methods=['GET'])
 def home():
@@ -25,7 +24,7 @@ def heartbeat():
         return jsonify({"error": "Invalid JSON body"}), 400
     print(data)
     device_id = data.get('device_id')
-    status_data = data.get('device_status', {})  # Default to empty dict if not provided
+    status_data = data.get('device_status', {})
 
     if device_id:
         device_status[device_id] = {

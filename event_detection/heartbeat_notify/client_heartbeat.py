@@ -5,7 +5,7 @@ import json
 LOCAL_HOST_IP = "127.0.0.1"
 PORT = "5000"
 DEVICE_ID = "device_1"
-SERVER_URL = f"http://{LOCAL_HOST_IP}:{PORT}" #node local
+SERVER_URL = f"http://{LOCAL_HOST_IP}:{PORT}"
 
 
 def is_server_ready(url, timeout=5):
