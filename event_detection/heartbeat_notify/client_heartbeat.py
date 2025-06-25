@@ -41,3 +41,6 @@ def heartbeat_sender(Bwim_process_status):
             print(f"Failed to send heartbeat: {e}      res: {response.json()}")
 
         time.sleep(10)  # Send heartbeat every 10 seconds
+
+if __name__ == "__main__":
+    heartbeat_sender({})
