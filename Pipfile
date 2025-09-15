@@ -23,6 +23,9 @@ pytesseract = "*"
 2to3 = "*"
 pandas = "*"
 flask = "*"
+sqlalchemy = "*"
+flask-sqlalchemy = "*"
+slack-sdk = "*"
 
 [dev-packages]
 pysnooper = "*"
