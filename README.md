@@ -30,3 +30,17 @@ https://www.python.org/downloads/release/python-2718/
     - EVENT_BWIM_SYNOLOGY_DRIVE = "C:\SynologyDrive\BWIM_BMA_002\EVENT_BWIM"
     - EVENT_VIDEO_SYNOLOGY_DRIVE = "C:\SynologyDrive\www\BMA002_EVENT"   # folder which store event video
     - EVENT_FTP_PATH = '/home/www/BMA002_EVENT'
+
+5. Create `.env-heartbeat-server` file with these pattern <br>
+    - LOCAL_HOST_IP = "10.241.0.1"
+    - PORT = "5000"
+    - INTERVAL_SECONDS = 10
+    - TOKEN_LIST=[secrets.token_urlsafe(32), ]
+
+
+5. Create `.env-event-detection` file with these pattern <br>
+    - SERVER_ENDPOINT="http://10.241.0.1:5000"
+    - DEVICE_ID = "BANGPHLAT"
+    - HEARTBEAT_SEC = 10
+    - RETRY_SEC = 5
+    - TOKEN=secrets.token_urlsafe(32)
