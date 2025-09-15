@@ -36,6 +36,8 @@ https://www.python.org/downloads/release/python-2718/
     - PORT = "5000"
     - INTERVAL_SECONDS = 10
     - TOKEN_LIST=[secrets.token_urlsafe(32), ]
+    - OAUTH_TOKEN = 
+    - CHANNEL = 
 
 
 5. Create `.env-event-detection` file with these pattern <br>
