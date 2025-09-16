@@ -43,7 +43,8 @@ def heartbeat_sender(Bwim_process_status):
             playload={}
             playload["device_status"] = Bwim_process_status
             # playload["device_status"] = json.dumps(Bwim_process_status, default=lambda obj: obj.__dict__, indent=4)
-            playload["device_id"]= DEVICE_ID
+            playload["device_id"] = DEVICE_ID
+            playload["max_next_pulse_sec"] = HEARTBEAT_SEC
             response = requests.post(f"{SERVER_ENDPOINT}/heartbeat",
                 headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {AUTH_TOKEN}'}, json=playload,)
             

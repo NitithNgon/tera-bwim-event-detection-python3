@@ -21,6 +21,9 @@ PORT = ENV_HB_SERVER.get("PORT")
 INTERVAL_SECONDS = int(ENV_HB_SERVER.get("INTERVAL_SECONDS", 10))
 
 
+
+#### Bearer Token Authentication 
+
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -46,6 +49,9 @@ def patch_routes_with_auth(app):
             app.view_functions[rule.endpoint] = wrapped
 
 
+
+#### Setup Flask Server, SQLAlchemy DB
+
 app = Flask(__name__)
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///mydatabase.sqlite'  # default db
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -60,13 +66,15 @@ db.init_app(app)
 with app.app_context():
     db.create_all(bind_key='heartbeat_db')
     db.create_all(bind_key='error_report_db')
-
     heartbeat_engine = db.engines['heartbeat_db']
     error_report_engine = db.engines['error_report_db']
-    print("heartbeat_db", inspect(heartbeat_engine).get_table_names())
-    print("error_report_db", inspect(error_report_engine).get_table_names())
-
+    print("heartbeat_db tables:", inspect(heartbeat_engine).get_table_names())
+    print("error_report_db tables:", inspect(error_report_engine).get_table_names())
     patch_routes_with_auth(app)
+
+
+
+#### REST API
 
 @app.route('/', methods=['GET'])
 def home():
@@ -150,7 +158,6 @@ def error_report():
         return jsonify({"error": "No device_id provided"}), 400
 
 
-
 @app.route('/heartbeat', methods=['POST'])
 def heartbeat():
     data = request.get_json()
@@ -158,16 +165,18 @@ def heartbeat():
         return jsonify({"error": "Invalid JSON body"}), 400 
     print(data)
     device_id = data.get('device_id')
+    max_next_pulse_sec = data.get('max_next_pulse_sec', 10)
     status_data = data.get('device_status', {})
     bwim_flag = status_data.pop("Flag_data", {})
     all_status = {**status_data, **bwim_flag}
-    
+
     if device_id:
         heartbeat = Heartbeat.query.filter_by(device_id=device_id).first()
         if heartbeat:
             heartbeat.last_time = datetime.now()
+            heartbeat.max_next_pulse_sec = int(max_next_pulse_sec)
         else:
-            heartbeat = Heartbeat(device_id=device_id, last_time=datetime.now())
+            heartbeat = Heartbeat(device_id=device_id, last_time=datetime.now(), max_next_pulse_sec=int(max_next_pulse_sec))
             db.session.add(heartbeat)
         db.session.commit()
 
@@ -186,21 +195,25 @@ def heartbeat():
         return jsonify({"error": "No device_id provided"}), 400
 
 
+
+#### Background functions
+
 def check_inactive_devices():
     with app.app_context():
         now = datetime.now()
-        timeout = timedelta(seconds=INTERVAL_SECONDS * 1.2)
+        # timeout = timedelta(seconds=INTERVAL_SECONDS * 1.2)
         all_devices = Heartbeat.query.all()
         for device in all_devices:
             device: Heartbeat = device
             diff_time = now - device.last_time
+            timeout = timedelta(seconds=device.max_next_pulse_sec * 1.2)
             
             device.active_status = diff_time <= timeout
             active_status_log = "online" if device.active_status else "offline"
             move_device_log_next_stage(device, log_type=0, status=active_status_log)
             save_device_status_to_new_log(device, device.device_status)
 
-            db.session.add(device)
+            # db.session.add(device)
 
         db.session.commit()
 
@@ -211,9 +224,8 @@ def check_inactive_devices():
 
 
 def save_device_status_to_new_log(device: Heartbeat, device_status: DeviceStatus):
-    
     log_type_log_status_dict = {}
-    
+
     # log_type 1
     match(device_status.strain_sampling_rate_status):
         case "SLOW":
@@ -228,11 +240,10 @@ def save_device_status_to_new_log(device: Heartbeat, device_status: DeviceStatus
         move_device_log_next_stage(device, log_type, log_status)
 
 
-
 def move_device_log_next_stage(device: Heartbeat, log_type: int, status: str):
-    current_link = device.current_links.filter_by(log_type=log_type).first()
+    current_link: HeartbeatLogLink = device.current_links.filter_by(log_type=log_type).first()
     if current_link:
-        current_device_log = current_link.device_log
+        current_device_log: DeviceLog = current_link.device_log
         if status == current_device_log.status:
             return
         close_current_device_log(current_device_log, device)
@@ -245,33 +256,33 @@ def move_device_log_next_stage(device: Heartbeat, log_type: int, status: str):
         db.session.flush()  # make sure updated rows visible to queries
     return
 
-def server_self_check():
-    with app.app_context():
-        now = datetime.now()
-        timeout = timedelta(seconds=INTERVAL_SECONDS * 3)
-        server_device = Heartbeat.query.filter_by(device_id="server_self_check").first()
-        if server_device:
-            diff_time = now - server_device.last_time
-            if diff_time > timeout:
-                print("Server self-check failed. Sending notification.")
-                send_slack_message("Server self-check failed. No heartbeat received.")
-        else:
-            # Create the server self-check entry if it doesn't exist
-            server_device = Heartbeat(device_id="server_self_check", last_time=now, active_status=True)
-            db.session.add(server_device)
-            db.session.commit()
+
+# def server_self_check():
+#     with app.app_context():
+#         now = datetime.now()
+#         timeout = timedelta(seconds=INTERVAL_SECONDS * 1.2)
+#         server_device = Heartbeat.query.filter_by(device_id="server_self_check").first()
+#         if server_device:
+#             diff_time = now - server_device.last_time
+#             if diff_time > timeout:
+#                 print("Server self-check failed. Sending notification.")
+#                 send_slack_message("Server self-check failed. No heartbeat received.")
+#         else:
+#             # Create the server self-check entry if it doesn't exist
+#             server_device = Heartbeat(device_id="server_self_check", last_time=now, active_status=True)
+#             db.session.add(server_device)
+#             db.session.commit()
 
 
 # Background thread to check inactive devices periodically
 def monitor_inactive_devices():
     while True:
         time.sleep(INTERVAL_SECONDS)  # Check every INTERVAL_SECONDS
-        check_inactive_devices()  # Check and handle inactive devices
         # server_self_check()
-
-
+        check_inactive_devices()  # Check and handle inactive devices
 
 threading.Thread(target=monitor_inactive_devices, daemon=True).start()
+
 
 if __name__ == "__main__":
     app.run(host=LOCAL_HOST_IP, port=PORT)

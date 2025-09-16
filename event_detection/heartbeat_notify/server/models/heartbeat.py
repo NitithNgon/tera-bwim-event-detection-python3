@@ -10,6 +10,7 @@ class Heartbeat(BaseModel):
 
     device_id = db.Column(db.String, primary_key=True)
     last_time = db.Column(db.DateTime, nullable=False)
+    max_next_pulse_sec = db.Column(db.Integer, nullable=False)
     active_status = db.Column(db.Boolean, default=True)
     notification_sent = db.Column(db.Boolean, default=False)
 
@@ -85,6 +86,7 @@ class DeviceLog(BaseModel):
     # Fields from Heartbeat
     device_id = db.Column(db.String, db.ForeignKey('heartbeat.device_id'), nullable=False)
     last_time = db.Column(db.DateTime, nullable=False)
+    max_next_pulse_sec = db.Column(db.Integer, nullable=False)
     active_status = db.Column(db.Boolean, default=True)
     notification_sent = db.Column(db.Boolean, default=False)
 
