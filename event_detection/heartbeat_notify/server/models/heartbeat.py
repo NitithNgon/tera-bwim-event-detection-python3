@@ -117,6 +117,7 @@ def initialize_device_log(heartbeat: Heartbeat, device_status: DeviceStatus, log
         status=status,
         start_time=datetime.now(),
         last_time=heartbeat.last_time,
+        max_next_pulse_sec=heartbeat.max_next_pulse_sec,
         expected_buffering_data_time=device_status.expected_buffering_data_time,
         actual_buffering_data_time=device_status.actual_buffering_data_time,
         strain_sampling_rate_status=device_status.strain_sampling_rate_status,
