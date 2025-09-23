@@ -39,8 +39,7 @@ https://www.python.org/downloads/release/python-2718/
     - OAUTH_TOKEN = 
     - CHANNEL = 
 
-
-5. Create `.env-event-detection` file with these pattern <br>
+5. Create `.env-heartbeat-client` file with these pattern <br>
     - SERVER_ENDPOINT="http://10.241.0.1:5000"
     - DEVICE_ID = "BANGPHLAT"
     - HEARTBEAT_SEC = 10
