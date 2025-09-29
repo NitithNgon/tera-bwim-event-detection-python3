@@ -35,24 +35,29 @@ def is_server_ready(url_endpoint, timeout=5):
 
 def heartbeat_sender(Bwim_process_status):
     while True:
-        
-        # Wait until the server is ready
-        is_server_ready(SERVER_ENDPOINT)
-
-        try:
-            playload={}
-            playload["device_status"] = Bwim_process_status
-            # playload["device_status"] = json.dumps(Bwim_process_status, default=lambda obj: obj.__dict__, indent=4)
-            playload["device_id"] = DEVICE_ID
-            playload["max_next_pulse_sec"] = HEARTBEAT_SEC
-            response = requests.post(f"{SERVER_ENDPOINT}/heartbeat",
-                headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {AUTH_TOKEN}'}, json=playload,)
-            
-            print(f"DEVICE_ID: {DEVICE_ID} Heartbeat sent.      res: {response.json()}")
-        except Exception as e:
-            print(f"Failed to send heartbeat: {e}      res: {response.json()}")
-
+        post_request_heartbeat(Bwim_process_status)
         time.sleep(HEARTBEAT_SEC)  # Send heartbeat every 10 seconds
+
+
+def post_request_heartbeat(Bwim_process_status, Trigger_bwim_process_status=None):
+    # Wait until the server is ready
+    is_server_ready(SERVER_ENDPOINT)
+
+    try:
+        playload={}
+        playload["device_status"] = Bwim_process_status
+        # playload["device_status"] = json.dumps(Bwim_process_status, default=lambda obj: obj.__dict__, indent=4)
+        if Trigger_bwim_process_status:
+            playload["trigger_status"] = Trigger_bwim_process_status
+        playload["device_id"] = DEVICE_ID
+        playload["max_next_pulse_sec"] = HEARTBEAT_SEC
+        response = requests.post(f"{SERVER_ENDPOINT}/heartbeat",
+            headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {AUTH_TOKEN}'}, json=playload,)
+        
+        print(f"DEVICE_ID: {DEVICE_ID} Heartbeat sent.      res: {response.json()}")
+    except Exception as e:
+        print(f"Failed to send heartbeat: {e}      res: {response.json()}")
+    return None
 
 
 def get_error_last(device_ids=None):
@@ -93,7 +98,34 @@ def get_error_last(device_ids=None):
 
 if __name__ == "__main__":
     pass
-    heartbeat_sender({})
+    # heartbeat_sender({})
+
+    post_request_heartbeat({},{"algorithm_status": "OK"})
+    time.sleep(10)
+    post_request_heartbeat({},{})
+    time.sleep(10)
+    post_request_heartbeat({},{"algorithm_status": "OK"})
+    time.sleep(60*8)
+    post_request_heartbeat({},{"algorithm_status": "OK"})
+    time.sleep(10)
+    post_request_heartbeat({},{"algorithm_status": "OK"})
+    time.sleep(10)
+    post_request_heartbeat({},{"algorithm_status": "NOT_OK"})
+    time.sleep(10)
+    post_request_heartbeat({},{"algorithm_status": "NOT_OK"})
+    time.sleep(10)
+    post_request_heartbeat({},{"algorithm_status": "NOT_OK"})
+    time.sleep(10)
+    post_request_heartbeat({},{"algorithm_status": "OK"})
+    time.sleep(10)
+    post_request_heartbeat({},{"algorithm_status": "NOT_OK"})
+    time.sleep(10)
+    post_request_heartbeat({},{"algorithm_status": "OK"})
+    time.sleep(10)
+    post_request_heartbeat({},{"algorithm_status": "NOT_OK"})
+
+
+
     # get_error_last()
     # get_error_last("loadtest-pc")
     # get_error_last(["loadtest-pc","device_1"])
