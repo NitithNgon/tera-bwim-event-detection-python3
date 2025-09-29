@@ -1,3 +1,4 @@
+from math import e
 import threading
 import time
 import os
@@ -168,28 +169,35 @@ def heartbeat():
     max_next_pulse_sec = data.get('max_next_pulse_sec', 10)
     status_data = data.get('device_status', {})
     bwim_flag = status_data.pop("Flag_data", {})
-    all_status = {**status_data, **bwim_flag}
+    trigger_status = data.get('trigger_status', {})
+    all_status = {**status_data, **bwim_flag, **trigger_status}
 
     if device_id:
-        heartbeat = Heartbeat.query.filter_by(device_id=device_id).first()
-        if heartbeat:
-            heartbeat.last_time = datetime.now()
-            heartbeat.max_next_pulse_sec = int(max_next_pulse_sec)
+        device = Heartbeat.query.filter_by(device_id=device_id).first()
+        if device:
+            device.last_time = datetime.now()
+            device.max_next_pulse_sec = int(max_next_pulse_sec)
         else:
-            heartbeat = Heartbeat(device_id=device_id, last_time=datetime.now(), max_next_pulse_sec=int(max_next_pulse_sec))
-            db.session.add(heartbeat)
-        db.session.commit()
+            device = Heartbeat(device_id=device_id, last_time=datetime.now(), max_next_pulse_sec=int(max_next_pulse_sec))
+            db.session.add(device)
+        db.session.flush()
 
-        device_status = DeviceStatus.query.filter_by(device_id=device_id).first()
+        device_status = device.device_status
         if device_status:
-            for key, value in all_status.items():
-                if hasattr(device_status, key):
-                    setattr(device_status, key, value)
+            for column in DeviceStatus.__table__.columns:
+                if column.name != 'device_id':  # Skip primary key
+                    if column.name in all_status:
+                        value = all_status[column.name]
+                    else:
+                        value = column.default.arg if column.default else column.default
+                    setattr(device_status, column.name, value)
         else:
             device_status = DeviceStatus(device_id=device_id, **all_status)
             db.session.add(device_status)
         db.session.commit()
-
+        save_device_status_to_new_log(device, device_status)
+        db.session.commit()
+        
         return jsonify({"status": "ok"}), 200
     else:
         return jsonify({"error": "No device_id provided"}), 400
@@ -211,16 +219,12 @@ def check_inactive_devices():
             device.active_status = diff_time <= timeout
             active_status_log = "online" if device.active_status else "offline"
             move_device_log_next_stage(device, log_type=0, status=active_status_log)
-            save_device_status_to_new_log(device, device.device_status)
-
-            # db.session.add(device)
 
         db.session.commit()
-
-        inactive_devices = Heartbeat.query.filter_by(active_status=False).all()
-        result = [device.to_dict() for device in inactive_devices]
-        print("Inactive devices:")
-        print(result)
+        # inactive_devices = Heartbeat.query.filter_by(active_status=False).all()
+        # result = [device.to_dict() for device in inactive_devices]
+        # print("Inactive devices:")
+        # print(result)
 
 
 def save_device_status_to_new_log(device: Heartbeat, device_status: DeviceStatus):
@@ -232,9 +236,33 @@ def save_device_status_to_new_log(device: Heartbeat, device_status: DeviceStatus
             log_type_log_status_dict[1] = "slow_strain_sampling_rate"
         case "OK":
             # log_type_log_status_dict[1] = "ok"
-            log_type_log_status_dict[1] = "normal"
+            log_type_log_status_dict[1] = "fast_strain_sampling_rate"
+        case _:
+            pass
 
     # log_type 2
+    algorithm_status = device_status.algorithm_status
+    if algorithm_status in ("OK", "NOT_OK"):
+        amount_algorithm_status, time_range_algorithm_status = algorithm_status_count(device_status, device)
+        print(amount_algorithm_status, time_range_algorithm_status)
+        if majority_algorithm_statuses_meet_criteria(
+            amount_algorithm_status,
+            time_range_algorithm_status,
+            reduction_factor=2 if algorithm_status == "OK" else 1,
+            time_range_factor=1.5 if algorithm_status == "OK" else 1,
+        ):
+            
+            log_type_log_status_dict[2] = "return_normal_codes" if algorithm_status == "OK" else "return_multiple_0_codes"
+        else:
+            current_link: HeartbeatLogLink = device.current_links.filter_by(log_type=2).first()
+            staging_device_status: StagingDeviceStatus = device_status.staging
+            if current_link and staging_device_status:
+                if staging_device_status.last_staging_algorithm_status == current_link.device_log.most_algorithm_status:
+                    reset_algorithm_status_count(device_status, device)
+                    set_last_cum_algorithm_status_count(current_link.device_log)
+                    db.session.flush()
+
+    # log_type 3
 
     for log_type, log_status in log_type_log_status_dict.items():
         move_device_log_next_stage(device, log_type, log_status)
@@ -245,6 +273,9 @@ def move_device_log_next_stage(device: Heartbeat, log_type: int, status: str):
     if current_link:
         current_device_log: DeviceLog = current_link.device_log
         if status == current_device_log.status:
+            is_update = updata_current_device_log(current_device_log, device.device_status)
+            if is_update:
+                db.session.flush()
             return
         close_current_device_log(current_device_log, device)
         db.session.flush()

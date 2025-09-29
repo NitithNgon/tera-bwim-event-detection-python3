@@ -78,7 +78,7 @@ class DeviceLog(BaseModel):
 
     log_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     log_type = db.Column(db.Integer, default=0)
-    status = db.Column(db.String(255), nullable=True)
+    status = db.Column(db.String(255), nullable=False)
     start_time = db.Column(db.DateTime, nullable=False)
     end_time = db.Column(db.DateTime, nullable=True)
     duration = db.Column(db.Interval, nullable=True)
@@ -90,7 +90,7 @@ class DeviceLog(BaseModel):
     active_status = db.Column(db.Boolean, default=True)
     notification_sent = db.Column(db.Boolean, default=False)
 
-    # Fields from DeviceStatus
+    # Fields from DeviceStatus Currently_bwim_process_status and Bwim_flag
     expected_buffering_data_time = db.Column(db.Interval, default=None)
     actual_buffering_data_time = db.Column(db.Interval, default=None)
     strain_sampling_rate_status = db.Column(db.String(50), default=None)
@@ -104,11 +104,19 @@ class DeviceLog(BaseModel):
     lpr_summary = db.Column(db.Integer, default=0)
     event_backup = db.Column(db.Integer, default=0)
 
+    # Fields from StagingDeviceStatus
+    most_algorithm_status = db.Column(db.String(255), default=None)
+    cum_amount_most_algorithm_status = db.Column(db.Integer, default=None)
+    cum_time_range_most_algorithm_status = db.Column(db.Interval, default=None)
+    last_cum_amount_most_algorithm_status = db.Column(db.Integer, default=0)
+    last_cum_time_range_most_algorithm_status = db.Column(db.Interval, default=timedelta(0))
+
     def __repr__(self):
         return f"<DeviceLog(id={self.id}, device_id={self.device_id}, active_status={self.active_status}, status={self.status}, start_time={self.start_time}, end_time={self.end_time}, duration={self.duration})>"
 
 
-def initialize_device_log(heartbeat: Heartbeat, device_status: DeviceStatus, log_type: int=0, status: str|None=None):
+def initialize_device_log(heartbeat: Heartbeat, device_status: DeviceStatus, log_type: int=0, status: str=""):
+    
     new_log = DeviceLog(
         log_type=log_type,
         device_id=heartbeat.device_id,
@@ -130,6 +138,9 @@ def initialize_device_log(heartbeat: Heartbeat, device_status: DeviceStatus, log
         event_4_triggered=device_status.event_4_triggered,
         lpr_summary=device_status.lpr_summary,
         event_backup=device_status.event_backup,
+        most_algorithm_status=device_status.staging.last_staging_algorithm_status if device_status.staging else None,
+        cum_amount_most_algorithm_status=device_status.staging.amount_algorithm_status if device_status.staging else None,
+        cum_time_range_most_algorithm_status=device_status.staging.time_range_algorithm_status if device_status.staging else None,
     )
     db.session.add(new_log)
     return new_log
@@ -147,3 +158,21 @@ def close_current_device_log(log: DeviceLog, heartbeat: Heartbeat):
                 db.session.delete(old_last_link)
             link = heartbeat.log_links.filter_by(log_id=log.log_id).first()
             link.link_kind = 'last'
+
+
+def updata_current_device_log(log: DeviceLog, device_status: DeviceStatus):
+    is_update = False
+    match(log.log_type):
+        # log_type 2 (update StagingDeviceStatus)
+        case 2:
+            log.cum_amount_most_algorithm_status = device_status.staging.amount_algorithm_status + log.last_cum_amount_most_algorithm_status
+            log.cum_time_range_most_algorithm_status = device_status.staging.time_range_algorithm_status + log.last_cum_time_range_most_algorithm_status
+            is_update = True
+        case _:
+            pass
+    return is_update
+
+
+def set_last_cum_algorithm_status_count(log: DeviceLog):
+    log.last_cum_amount_most_algorithm_status = log.cum_amount_most_algorithm_status
+    log.last_cum_time_range_most_algorithm_status = log.cum_time_range_most_algorithm_status
