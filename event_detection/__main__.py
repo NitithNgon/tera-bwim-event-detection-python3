@@ -40,6 +40,7 @@ from event_detection.bwim_obj import (
     Bwim_event,
     Bwim_flag,
     Currently_bwim_process_status,
+    Trigger_bwim_process_status
 )
 from config.get_config import(
     get_preamble_config,
@@ -123,6 +124,9 @@ Flag.event_backup = 0
 # initial Bwim_process_status
 Bwim_process_status = Currently_bwim_process_status()
 Bwim_process_status.Flag_data = Flag
+# initial Trigger_bwim_process_status
+Trigger_process_status = Trigger_bwim_process_status()
+
 client_heartbeat_threads = threading.Thread(target=client_HB.heartbeat_sender, args=(Bwim_process_status,), daemon=True)
 client_heartbeat_threads.start()
 
@@ -537,6 +541,10 @@ def bwim_create_event_file( Bwim_event_data , event_number):
     print ("[LANE-" + str(event_number + 1) +"]: Event "+event_create_time +" detected !!")
 
     return_code, lane = subprocess_call_bwim_truck_as_main(event_dir, lpr_number)
+    Trigger_process_status.algorithm_status = "OK" if return_code > 0 else "NOT_OK"
+    trigger_post_heartbeat_threads = threading.Thread(target=client_HB.post_request_heartbeat, args=(Bwim_process_status, Trigger_process_status), daemon=True)
+    trigger_post_heartbeat_threads.start()
+
     BWIMret = return_code
     # lane = 0
     print("[AVC]: ret = %d, lane = %d" % (BWIMret, lane))

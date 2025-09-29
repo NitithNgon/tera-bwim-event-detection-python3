@@ -57,4 +57,6 @@ class Currently_bwim_process_status:
     last_event_time = None
     Flag_data = Bwim_flag
 
-    
+
+class Trigger_bwim_process_status:
+    algorithm_status = "OK"
