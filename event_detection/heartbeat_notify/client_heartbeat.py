@@ -51,7 +51,7 @@ def post_request_heartbeat(Bwim_process_status, Trigger_bwim_process_status=None
             playload["trigger_status"] = Trigger_bwim_process_status
         playload["device_id"] = DEVICE_ID
         playload["max_next_pulse_sec"] = HEARTBEAT_SEC
-        response = requests.post(f"{SERVER_ENDPOINT}/heartbeat",
+        response = requests.post(f"{SERVER_ENDPOINT}/heartbeat", timeout=5,
             headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {AUTH_TOKEN}'}, json=playload,)
         
         print(f"DEVICE_ID: {DEVICE_ID} Heartbeat sent.      res: {response.json()}")
