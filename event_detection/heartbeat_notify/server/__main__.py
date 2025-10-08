@@ -12,6 +12,7 @@ from dotenv import dotenv_values
 from event_detection.heartbeat_notify.server.db import db, DATETIME_FORMAT
 from event_detection.heartbeat_notify.server.models import *
 from event_detection.heartbeat_notify.server.notify_slack import send_slack_message
+from event_detection.heartbeat_notify.server.models.db_schedule import initialize_scheduler, get_scheduler, stop_scheduler, DatabaseScheduler
 
 
 PATH_ENV_HB_SERVER = ".env-heartbeat-server"
@@ -62,7 +63,7 @@ app.config['SQLALCHEMY_BINDS'] = {
     'heartbeat_db': f"sqlite:///{os.path.join(db_dir, 'heartbeat_db.sqlite')}",
     'error_report_db': f"sqlite:///{os.path.join(db_dir, 'error_report_db.sqlite')}",
 }
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Disable SQLAlchemy’s event system monitors changes of Obj to emit event signal 
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Disable SQLAlchemy's event system monitors changes of Obj to emit event signal 
 db.init_app(app)
 with app.app_context():
     db.create_all(bind_key='heartbeat_db')
@@ -72,7 +73,14 @@ with app.app_context():
     print("heartbeat_db tables:", inspect(heartbeat_engine).get_table_names())
     print("error_report_db tables:", inspect(error_report_engine).get_table_names())
     patch_routes_with_auth(app)
-
+    
+    archive_path = os.path.join(BASE_DIR, 'archive')
+    scheduler = initialize_scheduler(
+        app,
+        archive_path=archive_path,
+        schedule_days=7,
+        schedule_hour=2
+    )
 
 
 #### REST API
@@ -80,6 +88,15 @@ with app.app_context():
 @app.route('/', methods=['GET'])
 def home():
     return jsonify({"message": "Server is running"}), 200
+
+
+@app.route('/archive/cleanup', methods=['POST'])
+def force_cleanup():
+    scheduler: DatabaseScheduler = get_scheduler()
+    if scheduler:
+        scheduler.force_cleanup()
+        return jsonify({"message": "Cleanup completed"}), 200
+    return jsonify({"error": "Scheduler not running"}), 500
 
 
 @app.route('/error_last', methods=['GET'])
@@ -312,8 +329,22 @@ def monitor_inactive_devices():
         # server_self_check()
         check_inactive_devices()  # Check and handle inactive devices
 
+
+def shutdown_handler():
+    print("Shutting down database scheduler...")
+    stop_scheduler()
+    print("Database scheduler stopped")
+
+
+import atexit
+atexit.register(shutdown_handler)
+
 threading.Thread(target=monitor_inactive_devices, daemon=True).start()
 
 
 if __name__ == "__main__":
-    app.run(host=LOCAL_HOST_IP, port=PORT)
+    try:
+        app.run(host=LOCAL_HOST_IP, port=PORT)
+    except KeyboardInterrupt:
+        print("Server shutting down...")
+        shutdown_handler()

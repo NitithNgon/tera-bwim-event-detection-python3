@@ -580,7 +580,8 @@ def bwim_create_event_file( Bwim_event_data , event_number):
             shutil.copyfile(lpr_bg[m], event_lpr_background[m])
             shutil.copyfile(lpr_p[m], event_lpr_plate[m])
 
-    mqtt_json_file = event_dir + "\json_BANGPHLAT_" + event_create_time + ".json"
+    # TODO
+    mqtt_json_file = event_dir + "\json_" + bridge_name +"_" + event_create_time + ".json"
 
     if not os.path.exists(mqtt_json_file):
         mqtt_json_file = "test.json.txt"    # for invalid unclassification
