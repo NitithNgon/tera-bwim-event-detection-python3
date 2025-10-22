@@ -90,6 +90,7 @@ def home():
     return jsonify({"message": "Server is running"}), 200
 
 
+# curl -X POST -H "Authorization: Bearer your_token" http://localhost:5000/archive/cleanup
 @app.route('/archive/cleanup', methods=['POST'])
 def force_cleanup():
     scheduler: DatabaseScheduler = get_scheduler()
