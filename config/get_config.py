@@ -9,7 +9,7 @@ def get_preamble_config(path_env: str) -> tuple:
         raise FileNotFoundError(
             errno.ENOENT, os.strerror(errno.ENOENT), f"{path_env} was not found in CWD")
     env_vars = dotenv_values(path_env)
-    bridge_name_config = env_vars["BRIDGE_NAME"] if env_vars["bridge_name"] else "default"
+    bridge_name_config = env_vars["BRIDGE_NAME"] if env_vars["BRIDGE_NAME"] else "default"
     path_config =env_vars["PATH_CONFIG"]
     preamble_config = parse_config(
         config_file=path_config,
